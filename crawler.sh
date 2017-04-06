@@ -7,10 +7,11 @@
 
 COOKIES=cookies.txt
 
-function downloadGroup() {
+function fetchPage() {
   local URL=$1
   local COOKIES=$2
   local FILE=$3
+
   mkdir -p crawled
 
   local FILE_NAME="crawled/$FILE"
@@ -32,15 +33,17 @@ function extractStudentsJSON() {
 
   pup --color -f "$FILE_NAME" 'div.caption json{}' |\
     jq -c \
-      --arg firstName "$(sisOpValue 0 0 lblNombre)" \
-      --arg lastName "$(sisOpValue 0 0 lblApellido)" \
-      --arg id "$(sisOpValue 1 0 lblLegajo)" \
-      --arg email "$(sisOpValue 1 1 lblEmail)" \
-      --arg classId "$(sisOpValue 1 2 lblCurso)" \
-      'map(.children) | map({firstName: $firstName, lastName: $lastName, id: $id, email: $email, classId: $classId })'
+      'def extract(base; inner; prop): .[base].children[inner].children | .[] | select(.class == prop).text;
+      map(.children) | map({firstName: extract(0; 0; "lblNombre"), lastName: extract(0; 0; "lblApellido"), id: extract(1; 0; "lblLegajo"), email: extract(1; 1; "lblEmail"), classId: extract(1; 2; "lblCurso") })'
 }
 
 function extractGroupName() {
+  local FILE_NAME=$1
+
+  pup --color -f "$FILE_NAME" 'div.page-header h1 text{}' | sed 's/Grupo: //g' | xargs -I% echo "\"%\""
+}
+
+function extractGroupEscapedName() {
   local FILE_NAME=$1
 
   pup --color -f "$FILE_NAME" 'div.page-header div.form-inline h4 a json{}' | jq '.[0].text' | sed 's/tp-....-.c-//g'
@@ -56,14 +59,16 @@ function processGroupJSON() {
   local GROUP_HTML=$1
 
   local NAME=$(extractGroupName "$GROUP_HTML")
+  local ESCAPED_NAME=$(extractGroupEscapedName "$GROUP_HTML")
   local REPO=$(extractGroupRepo "$GROUP_HTML")
   local STUDENTS=$(extractStudentsJSON "$GROUP_HTML")
 
-  echo "$STUDENTS" | jq -c "{name: $NAME, repo: $REPO, students: .}"
+  echo "$STUDENTS" | jq -c "{name: $NAME, escapedName: $ESCAPED_NAME, repo: $REPO, students: .}"
 }
 
 function processGroups() {
   local COOKIES=$1
+  
   mkdir -p groups
 
   local HTML_FILE=0
@@ -71,7 +76,7 @@ function processGroups() {
   while IFS='' read -r url || [[ -n "$url" ]]; do
     echo
     echo -n "Fetching group: $url... "
-    local GROUP_HTML=$(downloadGroup "$url" "$COOKIES" "$HTML_FILE.html")
+    local GROUP_HTML=$(fetchPage "$url" "$COOKIES" "$HTML_FILE.html")
     echo "Done!"
 
     echo
@@ -81,7 +86,7 @@ function processGroups() {
 
     echo
     echo -n "Saving group... "
-    local NAME=$(echo "$GROUP" | jq '.name' | sed 's/"//g')
+    local NAME=$(echo "$GROUP" | jq '.escapedName' | sed 's/"//g')
 
     echo "$GROUP" > "groups/$NAME.json"
     echo "Done!"
@@ -89,4 +94,12 @@ function processGroups() {
 
     HTML_FILE=$(($HTML_FILE + 1))
   done
+}
+
+function findGroups() {
+  local COOKIES=$1
+
+  local PAGE=$(fetchPage "https://inscripciones.utn.so/backoffice/index.php" $COOKIES "index.html")
+
+  pup --color -f "$PAGE" 'div#MisGrupos table tbody tr td a attr{href}' | grep -v "github" | xargs -I% echo "https://inscripciones.utn.so/backoffice/%"
 }
