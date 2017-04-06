@@ -7,7 +7,7 @@ function queryAPI() {
 	local URL=$2
 	local PARAMS=$3
 
-	curl -v -s \
+	curl -s \
 		-d "alt=json&max-results=1" \
 		-d "$PARAMS" \
 		-X GET \
@@ -20,7 +20,7 @@ function postAPI() {
 	local URL=$2
 	local XML=$3
 
-	curl -v -s -i \
+	curl -s -i -v \
 		-X POST \
 		-H "Authorization: Bearer $(getFromInfo "$LOGIN_INFO" "access_token")" \
 		-H "Content-Type: application/atom+xml" \
@@ -58,7 +58,33 @@ function createGroup() {
   <atom:title type="text">$GROUP_NAME</atom:title>
 </atom:entry>
 EOF
-	postAPI "$1" https://www.google.com/m8/feeds/groups/$EMAIL/full "$XML"
+
+	local RESPONSE=$(postAPI "$1" https://www.google.com/m8/feeds/groups/$EMAIL/full "$XML")
+
+	echo "$RESPONSE" | sed -n 's:.*<id>\(.*\)</id>.*:\1:p'
+}
+
+function createUserInGroup() {
+	local EMAIL=$(echo "$2" | sed "s/@/%40/g")
+	local CONTACT_EMAIL=$3
+	local GROUP_URL=$4
+
+	echo $EMAIL
+	echo $GROUP_URL
+	echo $CONTACT_EMAIL
+
+	read -r -d '' XML << EOF
+<atom:entry xmlns:atom="http://www.w3.org/2005/Atom" xmlns:gd="http://schemas.google.com/g/2005">
+  <atom:category scheme="http://schemas.google.com/g/2005#kind" term="http://schemas.google.com/contact/2008#contact"/>
+  <gd:email rel="http://schemas.google.com/g/2005#other" primary=true address="$CONTACT_EMAIL"/>
+</atom:entry>
+EOF
+#<gContact:groupMembershipInfo deleted="false" href="$GROUP_URL"/>
+
+	local RESPONSE=$(postAPI "$1" https://www.google.com/m8/feeds/contacts/$EMAIL/full "$XML")
+
+	# echo "$RESPONSE" | sed -n 's:.*<id>\(.*\)</id>.*:\1:p'
+	echo "$RESPONSE"
 }
 
 printf "\nPlease Authenticate in the folowing web page:\n\n"
