@@ -1,72 +1,78 @@
 #!/bin/bash
 
-CLIENT_ID=812331059426-iui8aml6jab3sukfiitggdspbqmnqtin.apps.googleusercontent.com
-SECRET_KEY=3xvHNbpE5UNx5YQlirlPa3vd
+source auth.sh
 
-function createUserInfo(){
-	local CLIENT_ID=$1
+function queryAPI() {
+	local LOGIN_INFO=$1
+	local URL=$2
+	local PARAMS=$3
 
-	curl -s -d \
-		"client_id=$CLIENT_ID&scope=https://www.googleapis.com/auth/contacts"\
-		https://accounts.google.com/o/oauth2/device/code
+	curl -v -s \
+		-d "alt=json&max-results=1" \
+		-d "$PARAMS" \
+		-X GET \
+		-H "Authorization: Bearer $(getFromInfo "$LOGIN_INFO" "access_token")" \
+		-G $URL
 }
 
-function getFromInfo(){
-	local INFO=$1
-	local VALUE=$2
+function postAPI() {
+	local LOGIN_INFO=$1
+	local URL=$2
+	local XML=$3
 
-	echo $INFO | jq ".$VALUE" | cut -d"\"" -f 2
+	curl -v -s -i \
+		-X POST \
+		-H "Authorization: Bearer $(getFromInfo "$LOGIN_INFO" "access_token")" \
+		-H "Content-Type: application/atom+xml" \
+		-H "GData-Version: 3.0" \
+ 		-d@- \
+		$URL << EOF
+$XML
+EOF
 }
 
-function displayUserInfo(){
-	local INFO=$1
+function fetchContacts() {
+	local EMAIL=$(echo "$2" | sed "s/@/%40/g")
+	local FILTERS=$3
 
-	echo "Verification URL:" $(getFromInfo "$INFO" "verification_url")
-	echo "User Code:" $(getFromInfo "$INFO" "user_code")
+	if [[ "$FILTERS" != "" ]]; then
+		FILTERS="q=\"$FILTERS\""
+	fi
+
+	queryAPI "$1" https://www.google.com/m8/feeds/contacts/$EMAIL/full "$FILTERS"
 }
 
-function singlePollAuth(){
-	local CLIENT_ID=$1
-	local SECRET_KEY=$2
-	local DEVICE_CODE=$3
+function fetchGroups() {
+	local EMAIL=$(echo "$2" | sed "s/@/%40/g")
 
-	curl -s -d "client_id=$CLIENT_ID&client_secret=$SECRET_KEY&code=$DEVICE_CODE&grant_type=http://oauth.net/grant_type/device/1.0" \
-		 -H "Content-Type: application/x-www-form-urlencoded" \
-		 https://www.googleapis.com/oauth2/v4/token
+	queryAPI "$1" https://www.google.com/m8/feeds/groups/$EMAIL/full
 }
 
-function checkAuthorization(){
-	local RESPONSE=$1
+function createGroup() {
+	local EMAIL=$(echo "$2" | sed "s/@/%40/g")
+	local GROUP_NAME=$3
+
+	read -r -d '' XML << EOF
+<atom:entry xmlns:atom="http://www.w3.org/2005/Atom" xmlns:gd="http://schemas.google.com/g/2005">
+  <atom:category scheme="http://schemas.google.com/g/2005#kind" term="http://schemas.google.com/contact/2008#group"/>
+  <atom:title type="text">$GROUP_NAME</atom:title>
+</atom:entry>
+EOF
+	postAPI "$1" https://www.google.com/m8/feeds/groups/$EMAIL/full "$XML"
 }
 
+printf "\nPlease Authenticate in the folowing web page:\n\n"
 
-function pollGoogleAuth(){
-	local PENDING=false
+USER_INFO=$(createUserInfo "$CLIENT_ID")
 
-	local INTERVAL=$1
-	shift
+requestUserLogin "$USER_INFO"
 
-	local RESPONSE
+printf "\nAuthenticating...\n\n"
 
-	while [[ $PENDING == false ]]; do
-		RESPONSE=$(singlePollAuth $*)
-		
-		if [[ "$( echo "$RESPONSE" | jq '.access_token' )" != "null" ]]; then
-			break
-		fi
+LOGIN_INFO=$(fetchLoginInfo "$USER_INFO" "$CLIENT_ID" "$SECRET_KEY")
 
-		sleep $INTERVAL 
-	done
+printf "\nAuthenticated!\n\n"
 
-	echo $RESPONSE
-}
+printf "\nLogin Info: $LOGIN_INFO\n\n"
 
-USER_INFO=$(createUserInfo $CLIENT_ID)
-
-displayUserInfo "$USER_INFO"
-
-LOGIN_INFO=$( pollGoogleAuth $(getFromInfo "$USER_INFO" "interval") $CLIENT_ID $SECRET_KEY $(getFromInfo "$USER_INFO" "device_code") )
-
-echo "Authenticated!!"
-
-echo "Login Info: $LOGIN_INFO"
+fetchContacts "$LOGIN_INFO" "gtaind@gmail.com"
