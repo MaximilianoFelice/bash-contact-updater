@@ -1,6 +1,14 @@
 #!/bin/bash
 
 source auth.sh
+source crawler.sh
+
+function extractTag() {
+  local CONTENT=$1
+  local TAG=$2
+
+  echo "$CONTENT" | sed -n "s:.*<$TAG>\(.*\)</$TAG>.*:\1:p"
+}
 
 function queryAPI() {
 	local LOGIN_INFO=$1
@@ -61,7 +69,7 @@ EOF
 
 	local RESPONSE=$(postAPI "$1" https://www.google.com/m8/feeds/groups/$EMAIL/full "$XML")
 
-	echo "$RESPONSE" | sed -n 's:.*<id>\(.*\)</id>.*:\1:p'
+	extractTag "$RESPONSE" "id"
 }
 
 function createUserInGroup() {
@@ -83,21 +91,21 @@ EOF
 
 	local RESPONSE=$(postAPI "$1" https://www.google.com/m8/feeds/contacts/$EMAIL/full "$XML")
 
-	echo "$RESPONSE" | sed -n 's:.*<id>\(.*\)</id>.*:\1:p'
+	extractTag "$RESPONSE" "id"
 }
 
-printf "\nPlease Authenticate in the folowing web page:\n\n"
+# printf "\nPlease Authenticate in the folowing web page:\n\n"
 
-USER_INFO=$(createUserInfo "$CLIENT_ID")
+# USER_INFO=$(createUserInfo "$CLIENT_ID")
 
-requestUserLogin "$USER_INFO"
+# requestUserLogin "$USER_INFO"
 
-printf "\nAuthenticating...\n\n"
+# printf "\nAuthenticating...\n\n"
 
-LOGIN_INFO=$(fetchLoginInfo "$USER_INFO" "$CLIENT_ID" "$SECRET_KEY")
+# LOGIN_INFO=$(fetchLoginInfo "$USER_INFO" "$CLIENT_ID" "$SECRET_KEY")
 
-printf "\nAuthenticated!\n\n"
+# printf "\nAuthenticated!\n\n"
 
-printf "\nLogin Info: $LOGIN_INFO\n\n"
-
-fetchContacts "$LOGIN_INFO" "gtaind@gmail.com"
+processGroups $COOKIES << EOF
+https://inscripciones.utn.so/backoffice/vergrupo.php?idgrupo=1176
+EOF
