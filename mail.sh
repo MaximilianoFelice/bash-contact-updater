@@ -3,7 +3,5 @@
 function getAllEmails(){
   mkdir -p "groups"
 
-  local EMAILS=$(cat groups/* | jq -s '. | map(.students | map(.email)) | flatten[]' | xargs -I% echo "from: %, to: %" | paste -sd ",")
-
-  echo "{$EMAILS} after:yyyy/mm/dd before:yyyy/mm/dd"
+  cat groups/* | jq -s '. | map(.students | map(.email)) | flatten[]' | xargs -I% echo "from:% to:%" | xargs -n 40 | xargs -I% printf "\n{%} after:yyyy/mm/dd before:yyyy/mm/dd\n"
 }
