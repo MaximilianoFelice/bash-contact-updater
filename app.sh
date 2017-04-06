@@ -76,15 +76,14 @@ function createUserInGroup() {
 	read -r -d '' XML << EOF
 <atom:entry xmlns:atom="http://www.w3.org/2005/Atom" xmlns:gd="http://schemas.google.com/g/2005">
   <atom:category scheme="http://schemas.google.com/g/2005#kind" term="http://schemas.google.com/contact/2008#contact"/>
-  <gd:email rel="http://schemas.google.com/g/2005#other" primary=true address="$CONTACT_EMAIL"/>
+  <gd:email rel="http://schemas.google.com/g/2005#other" primary="true" address="$CONTACT_EMAIL"/>
+  <gContact:groupMembershipInfo deleted="false" href="$GROUP_URL"/>
 </atom:entry>
 EOF
-#<gContact:groupMembershipInfo deleted="false" href="$GROUP_URL"/>
 
 	local RESPONSE=$(postAPI "$1" https://www.google.com/m8/feeds/contacts/$EMAIL/full "$XML")
 
-	# echo "$RESPONSE" | sed -n 's:.*<id>\(.*\)</id>.*:\1:p'
-	echo "$RESPONSE"
+	echo "$RESPONSE" | sed -n 's:.*<id>\(.*\)</id>.*:\1:p'
 }
 
 printf "\nPlease Authenticate in the folowing web page:\n\n"
