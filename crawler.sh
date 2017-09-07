@@ -99,7 +99,7 @@ function processGroups() {
 function findGroups() {
   local COOKIES=$1
 
-  local PAGE=$(fetchPage "https://inscripciones.utn.so/backoffice/index.php" $COOKIES "index.html")
+  local PAGE=$(fetchPage "https://inscripciones.utnso.com/backoffice/index.php" $COOKIES "index.html")
 
-  pup --color -f "$PAGE" 'div#MisGrupos table tbody tr td a attr{href}' | grep -v "github" | xargs -I% echo "https://inscripciones.utn.so/backoffice/%"
+  pup --color -f "$PAGE" 'div#MisGrupos table tbody tr td a attr{href}' | grep -v "github" | xargs -I% echo "https://inscripciones.utnso.com/backoffice/%"
 }

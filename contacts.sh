@@ -58,11 +58,12 @@ function createGroup() {
   local GROUP_NAME=$3
   local GROUP_ESCAPED_NAME=$4
   local REPO=$5
+  local GROUP_PREFIX=$6
 
   read -r -d '' XML << EOF
 <atom:entry xmlns:atom="http://www.w3.org/2005/Atom" xmlns:gd="http://schemas.google.com/g/2005">
   <atom:category scheme="http://schemas.google.com/g/2005#kind" term="http://schemas.google.com/contact/2008#group"/>
-  <atom:title type="text">SisOp::1C-2017-$GROUP_ESCAPED_NAME</atom:title>
+  <atom:title type="text">${GROUP_PREFIX}${GROUP_ESCAPED_NAME}</atom:title>
   <gd:extendedProperty name="sisop">
     <type>group</type>
     <name>$GROUP_NAME</name>
@@ -111,7 +112,8 @@ EOF
 function createContactGroupFromJSON(){
   local LOGIN_INFO=$1
   local EMAIL=$2
-  local JSON=$(cat "groups/$3")
+  local GROUP_PREFIX=$3
+  local JSON=$(cat "groups/$4")
 
   local NAME=$(echo "$JSON" | jq '.name' | sed 's/"//g')
   local ESCAPED_NAME=$(echo "$JSON" | jq '.escapedName' | sed 's/"//g')
@@ -121,7 +123,7 @@ function createContactGroupFromJSON(){
 
   echo
   echo -n "Creating Group $NAME... "
-  local GROUP_URL=$(createGroup "$LOGIN_INFO" "$EMAIL" "$NAME" "$ESCAPED_NAME" "$REPO")
+  local GROUP_URL=$(createGroup "$LOGIN_INFO" "$EMAIL" "$NAME" "$ESCAPED_NAME" "$REPO" "$GROUP_PREFIX")
   if [[ "$GROUP_URL" == "" ]]; then
     echo "ERROR: creating $EMAIL $NAME $ESCAPED_NAME $REPO"
     exit 1
