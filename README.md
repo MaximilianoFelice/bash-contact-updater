@@ -5,6 +5,7 @@ This application crawles all the data from your assigned groups in your main bac
 
 
 *Requirements:
+    - Having installed `pup`: https://github.com/ericchiang/pup
     - A cookie file, which you can extract from your browser, named `cookies.txt`, with the session logged in to the backoffice.
 
 
